@@ -70,8 +70,15 @@ def clean_function_call_text(prefix: str, text: str):
     return text[len(prefix) :].strip()
 
 
+class MalformedDocsException(Exception):
+    pass
+
+
 def parse_sections(soup: bs4.BeautifulSoup):
     """Given the root element of a ReaScript API documentation page, parse each section into FunctionCallSection and GenericSection"""
+
+    if soup.body is None:
+        raise MalformedDocsException("<body> element is missing from documentation")
 
     for section, children in split_sections(
         soup.body.children, is_section_header_element
