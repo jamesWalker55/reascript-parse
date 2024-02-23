@@ -170,12 +170,21 @@ def main():
     from .parse_lua import FunctionCall
 
     with open("src/rs_parse/REAPER API functions.html", "r", encoding="utf8") as f:
-        result = parse(f)
+        sections = parse(f)
 
-    for section in result:
+    result: list[str] = []
+
+    for section in sections:
         if section.l_func is not None:
-            fc = FunctionCall.parse(section.l_func)
-            print(fc)
+            try:
+                fc = FunctionCall.parse(section.l_func)
+                result.append(str(fc))
+            except Exception as e:
+                result.append(f"# {e}")
+
+    with open("temp.txt", "w", encoding="utf8") as f:
+        for line in result:
+            print(line, file=f)
 
 
 if __name__ == "__main__":
