@@ -1,7 +1,4 @@
 import itertools
-import json
-import textwrap
-from pprint import pformat
 from typing import Iterable, NamedTuple, TextIO
 
 import bs4
@@ -86,6 +83,12 @@ def parse_sections(soup: bs4.BeautifulSoup):
         section: bs4.Tag | None
         children: Iterable[bs4.Tag | str]
 
+        section_name: str | None
+        if section is None:
+            section_name = None
+        else:
+            section_name = section.attrs["name"]
+
         c_func: str | None = None
         e_func: str | None = None
         l_func: str | None = None
@@ -122,12 +125,12 @@ def parse_sections(soup: bs4.BeautifulSoup):
 
         if c_func is None and e_func is None and l_func is None and p_func is None:
             yield GenericSection(
-                None if section is None else section.attrs["name"],
+                section_name,
                 description,
             )
         else:
             yield FunctionCallSection(
-                None if section is None else section.attrs["name"],
+                section_name,
                 c_func,
                 e_func,
                 l_func,
