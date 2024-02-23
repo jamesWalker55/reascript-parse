@@ -167,12 +167,15 @@ def parse(f: TextIO):
 
 
 def main():
+    from .parse_lua import FunctionCall
+
     with open("src/rs_parse/REAPER API functions.html", "r", encoding="utf8") as f:
         result = parse(f)
 
     for section in result:
-        if section.l_func is None:
-            print(section.name)
+        if section.l_func is not None:
+            fc = FunctionCall.parse(section.l_func)
+            print(fc)
 
 
 if __name__ == "__main__":
