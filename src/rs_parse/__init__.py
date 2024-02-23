@@ -1,6 +1,6 @@
-from . import html_parser
+from . import parse_doc
 
 
 def main():
-    return html_parser.main()
+    return parse_doc.main()
     # return "Hello from rs-parse!"
