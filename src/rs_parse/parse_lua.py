@@ -1,11 +1,12 @@
 import re
-import xml.etree.ElementTree as ET
 from typing import NamedTuple, Optional
 
 
 class ParseError(Exception):
     def __init__(self, source_text: str, msg: str) -> None:
         super().__init__(f"{msg}: {source_text!r}")
+        self.msg = msg
+        self.source_text = source_text
 
 
 class RetVal(NamedTuple):
@@ -96,10 +97,7 @@ class FunctionCall(NamedTuple):
             return f"{self.namespace}.{self.name}({params})"
 
     @classmethod
-    def from_element(cls, functioncall: ET.Element):
-        text = functioncall.text
-        assert text is not None, "functioncall element contains no text"
-
+    def parse(cls, text: str):
         # determine if functioncall has an assignment, "... = ..."
         _ = text.split("=")
         if not 1 <= len(_) <= 2:
@@ -111,7 +109,7 @@ class FunctionCall(NamedTuple):
         retvals = _[0] if len(_) == 2 else None
 
         # find the parameters for this functioncall
-        params_match = re.search(r"\(([A-Za-z0-9 _.,]*)\)", call)
+        params_match = re.search(r"\(([A-Za-z0-9 _.,\n]*)\)", call)
         if params_match is None:
             raise ParseError(text, "failed to find params")
 
@@ -136,7 +134,11 @@ class FunctionCall(NamedTuple):
         if retvals is not None:
             functionname = call[: params_match.start()]
 
-            retvals = [RetVal.parse(x) for x in retvals.split(",")]
+            try:
+                retvals = [RetVal.parse(x) for x in retvals.split(",")]
+            except ParseError as e:
+                raise ParseError(text, e.msg)
+
         else:
             # no assignment expression '='
             # but it might still have a return value, specified as:
@@ -160,36 +162,3 @@ class FunctionCall(NamedTuple):
         namespace, functionname = _
 
         return cls(functionname, namespace, params, retvals, varargs)
-
-
-# def main():
-#     from .parse_doc import parse_usdocml
-
-#     with open("Reaper_Api_Documentation.USDocML", "r", encoding="utf8") as f:
-#         xml_text = hard_fix(f.read())
-
-#     with open("fixed.xml", "w", encoding="utf8") as f:
-#         f.write(xml_text)
-
-#     root = parse_usdocml(xml_text)
-
-#     assert root.tag == "USDocBloc"
-
-#     with open("temp_lua_calls.txt", "w", encoding="utf8") as f:
-#         for docbloc in root:
-#             assert docbloc.tag == "US_DocBloc"
-
-#             lua_functioncall = docbloc.find('functioncall[@prog_lang="lua"]')
-#             if lua_functioncall is None:
-#                 continue
-
-#             try:
-#                 parsed = FunctionCall.from_element(lua_functioncall)
-#                 print(parsed, file=f)
-#             except ParseError as e:
-#                 print(f"[ERROR] {e}", file=f)
-#                 print(f"[ERROR] {e}")
-
-
-# if __name__ == "__main__":
-#     main()
