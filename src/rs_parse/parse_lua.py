@@ -38,9 +38,9 @@ class RetVal(NamedTuple):
 
     def __str__(self) -> str:
         if self.optional:
-            return f"optional {self.type} {self.name}"
+            return f"optional {self.type} {self.name or '_'}"
         else:
-            return f"{self.type} {self.name}"
+            return f"{self.type} {self.name or '_'}"
 
 
 class FuncParam(NamedTuple):
@@ -71,9 +71,9 @@ class FuncParam(NamedTuple):
 
     def __str__(self) -> str:
         if self.optional:
-            return f"optional {self.type} {self.name}"
+            return f"optional {self.type} {self.name or '_'}"
         else:
-            return f"{self.type} {self.name}"
+            return f"{self.type} {self.name or '_'}"
 
 
 class FunctionCall(NamedTuple):
