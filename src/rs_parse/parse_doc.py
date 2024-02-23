@@ -58,7 +58,18 @@ class GenericSection(NamedTuple):
     description: str | None
 
 
-def clean_function_call_text(prefix: str, text: str):
+def iter_nested_tag_text(tag: bs4.Tag):
+    for child in tag.children:
+        if isinstance(child, str):
+            yield child
+        else:
+            yield from iter_nested_tag_text(child)  # type: ignore
+
+
+def parse_function_call_text(prefix: str, tag: bs4.Tag):
+    text = " ".join(iter_nested_tag_text(tag))
+    text = text.strip()
+
     if not text.startswith(prefix):
         raise AssertionError(
             f"expected function text to begin with {prefix!r}: {text!r}"
@@ -105,16 +116,16 @@ def parse_sections(soup: bs4.BeautifulSoup):
             if tagname == "DIV" and "class" in child.attrs:
                 classes: list[str] = child.attrs["class"]  # type: ignore
                 if "c_func" in classes:
-                    c_func = clean_function_call_text("C:", child.text)
+                    c_func = parse_function_call_text("C:", child)
                     continue
                 elif "e_func" in classes:
-                    e_func = clean_function_call_text("EEL2:", child.text)
+                    e_func = parse_function_call_text("EEL2:", child)
                     continue
                 elif "l_func" in classes:
-                    l_func = clean_function_call_text("Lua:", child.text)
+                    l_func = parse_function_call_text("Lua:", child)
                     continue
                 elif "p_func" in classes:
-                    p_func = clean_function_call_text("Python:", child.text)
+                    p_func = parse_function_call_text("Python:", child)
                     continue
 
             description_parts.append(child.text)
