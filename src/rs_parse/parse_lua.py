@@ -127,7 +127,10 @@ class FunctionCall(NamedTuple):
             params = []
         else:
             # params are delimited by commas
-            params = [FuncParam.parse(x) for x in params_str.split(",")]
+            try:
+                params = [FuncParam.parse(x) for x in params_str.split(",")]
+            except ParseError as e:
+                raise ParseError(text, e.msg)
 
         # determine the name and return values of this functioncall
         # handled differently depending on if there is an assignment, "... = ..."
