@@ -1,16 +1,9 @@
 import textwrap
-from .parse_lua import FuncParam, FunctionCall, RetVal
+
+from .parse_lua import FunctionCall
 
 
-def _fmt_ret_val(ret_val: RetVal):
-    pass
-
-
-def _fmt_func_param(func_param: FuncParam):
-    pass
-
-
-def _fmt_function_call(fc: FunctionCall, desc: str | None):
+def function_call(fc: FunctionCall, desc: str | None, *, deprecated: bool = False):
     docstring_parts: list[str] = []
 
     docstring_parts.append(f"```\n{fc}\n```")
@@ -25,6 +18,9 @@ def _fmt_function_call(fc: FunctionCall, desc: str | None):
     if len(fc.retvals) > 0:
         docstring_parts.append(f"@return {', '.join([rv.type for rv in fc.retvals])}")
 
+    if deprecated:
+        docstring_parts.append(f"@deprecated")
+
     docstring = "\n".join(
         (
             textwrap.indent(x, "---", lambda _: True)
@@ -33,6 +29,9 @@ def _fmt_function_call(fc: FunctionCall, desc: str | None):
         )
         for x in docstring_parts
     )
+
+    # trim trailing whitespaces from docstring
+    docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
 
     params = ", ".join([p.name for p in fc.params])
     declaration = f"{fc.name} = function({params}) end,"

@@ -25,9 +25,15 @@ def main():
 
         try:
             fc = parse_lua.FunctionCall.parse(section.l_func)
-            print(fc.name)
-            # fc_str = to_emmy._fmt_function_call(fc, section.description)
-            # print(fc_str)
+            deprecated = (
+                "deprecated" in section.description.lower()
+                if section.description
+                else False
+            )
+            fc_str = to_emmy.function_call(
+                fc, section.description, deprecated=deprecated
+            )
+            print(fc_str)
         except parse_lua.ParseError as e:
             print(e)
 
