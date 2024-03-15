@@ -1,6 +1,35 @@
+from . import to_emmy
 from . import parse_doc
+from . import parse_lua
+from argparse import ArgumentParser
+
+
+def parse_args():
+    parser = ArgumentParser()
+
+    parser.add_argument("input")
+
+    return parser.parse_args()
 
 
 def main():
-    return parse_doc.main()
+    args = parse_args()
+
+    with open(args.input, "r", encoding="utf8") as f:
+        sections = parse_doc.parse(f)
+
+    # functioncalls: list[parse_lua.FunctionCall] = []
+    for section in sections:
+        if section.l_func is None:
+            continue
+
+        try:
+            fc = parse_lua.FunctionCall.parse(section.l_func)
+            print(fc.name)
+            # fc_str = to_emmy._fmt_function_call(fc, section.description)
+            # print(fc_str)
+        except parse_lua.ParseError as e:
+            print(e)
+
+    # return parse_doc.main()
     # return "Hello from rs-parse!"
