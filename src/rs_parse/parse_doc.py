@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Iterable, NamedTuple, TextIO
+from typing import Iterable, Literal, NamedTuple, TextIO
 
 import bs4
 
@@ -30,10 +30,9 @@ class RawSection(NamedTuple):
 
     header: str | None
     children: list[bs4.Tag | str]
-    is_single_language: bool
 
 
-def split_sections(it: Iterable[bs4.PageElement | str], *, is_single_language=False):
+def split_sections(it: Iterable[bs4.PageElement | str]):
     """
     Given an iterable of elements, split it by 'section headers'. This expects the
     sequence to be like this:
@@ -56,7 +55,7 @@ def split_sections(it: Iterable[bs4.PageElement | str], *, is_single_language=Fa
     A 'section header' is determined by the '_get_text_if_is_section' function.
     """
 
-    current_section: RawSection = RawSection(None, [], is_single_language)
+    current_section: RawSection = RawSection(None, [])
 
     for child in it:
         if isinstance(child, str):
@@ -72,7 +71,7 @@ def split_sections(it: Iterable[bs4.PageElement | str], *, is_single_language=Fa
             continue
 
         yield current_section
-        current_section = RawSection(new_section_name, [], is_single_language)
+        current_section = RawSection(new_section_name, [])
 
     yield current_section
 
@@ -155,7 +154,10 @@ def preprocess_body(it: Iterable[bs4.PageElement | str]):
         if isinstance(child, str):
             continue
 
-        if "class" not in child.attrs:  # type: ignore
+        if not isinstance(child, bs4.Tag):
+            raise NotImplementedError("what the fuck is this")
+
+        if "class" not in child.attrs:
             continue
 
         classes: list[str] = child.attrs["class"]  # type: ignore
@@ -182,11 +184,11 @@ def parse_sections(
     children: Iterable[bs4.PageElement | str],
 ) -> Generator[Section, None, None]:
     """
-    Given the root element of a ReaScript API documentation page, parse each section
-    into FunctionCallSection and GenericSection sections.
+    Given the children of a ReaScript API documentation page's body, grouop and
+    parse each section into FunctionCallSection and GenericSection sections.
     """
 
-    for section_name, children, is_single_language in split_sections(children):
+    for section_name, children in split_sections(children):
         c_func: str | None = None
         e_func: str | None = None
         l_func: str | None = None
@@ -200,25 +202,22 @@ def parse_sections(
 
             tagname = child.name.upper()
 
-            if is_single_language:
-                print(child)
-            else:
-                if tagname == "DIV" and "class" in child.attrs:
-                    classes: list[str] = child.attrs["class"]  # type: ignore
-                    if "c_func" in classes:
-                        c_func = parse_function_call_text("C:", child)
-                        continue
-                    elif "e_func" in classes:
-                        e_func = parse_function_call_text("EEL2:", child)
-                        continue
-                    elif "l_func" in classes:
-                        l_func = parse_function_call_text("Lua:", child)
-                        continue
-                    elif "p_func" in classes:
-                        p_func = parse_function_call_text("Python:", child)
-                        continue
+            if tagname == "DIV" and "class" in child.attrs:
+                classes: list[str] = child.attrs["class"]  # type: ignore
+                if "c_func" in classes:
+                    c_func = parse_function_call_text("C:", child)
+                    continue
+                elif "e_func" in classes:
+                    e_func = parse_function_call_text("EEL2:", child)
+                    continue
+                elif "l_func" in classes:
+                    l_func = parse_function_call_text("Lua:", child)
+                    continue
+                elif "p_func" in classes:
+                    p_func = parse_function_call_text("Python:", child)
+                    continue
 
-                description_parts.append(child.text)
+            description_parts.append(child.text)
 
         description = "\n".join(description_parts).strip()
         if len(description) == 0:
@@ -230,6 +229,85 @@ def parse_sections(
                 description,
             )
         else:
+            yield FunctionCallSection(
+                section_name,
+                c_func,
+                e_func,
+                l_func,
+                p_func,
+                description,
+            )
+
+
+def parse_single_language_sections(
+    language: Literal["lua", "c", "eel", "python"],
+    it: Iterable[bs4.PageElement | str],
+) -> Generator[Section, None, None]:
+    """
+    Given the children of a sub-section, e.g. 'e_funcs', group and parse each section
+    into FunctionCallSection and GenericSection sections.
+    """
+
+    for section_name, children in split_sections(it):
+        description_parts: list[str] = []
+
+        # find index of first <code> element
+        code_idx = None
+        for i, child in enumerate(children):
+            if isinstance(child, str):
+                continue
+
+            if not isinstance(child, bs4.Tag):
+                raise NotImplementedError("what the fuck is this")
+
+            if child.name.lower() != "code":
+                continue
+
+            code_idx = i
+            break
+
+        if code_idx is not None:
+            code_element = children.pop(code_idx)
+            if not isinstance(code_element, bs4.Tag):
+                raise NotImplementedError("what the fuck is this")
+
+            functioncall_text = parse_function_call_text("", code_element)
+        else:
+            functioncall_text = None
+
+        for child in children:
+            if isinstance(child, str):
+                description_parts.append(child)
+                continue
+
+            description_parts.append(child.text)
+
+        description = "\n".join(description_parts).strip()
+        if len(description) == 0:
+            description = None
+
+        if functioncall_text is None:
+            yield GenericSection(
+                section_name,
+                description,
+            )
+        else:
+            c_func: str | None = None
+            e_func: str | None = None
+            l_func: str | None = None
+            p_func: str | None = None
+
+            if language == "c":
+                c_func = functioncall_text
+            elif language == "eel":
+                e_func = functioncall_text
+            elif language == "lua":
+                l_func = functioncall_text
+            elif language == "python":
+                p_func = functioncall_text
+            else:
+                raise NotImplementedError(f"language not implemented: {language}")
+
             yield FunctionCallSection(
                 section_name,
                 c_func,
@@ -267,10 +345,36 @@ def parse(f: TextIO):
 
         result.append(section)
 
-    if len(extras) > 0:
-        raise NotImplementedError(
-            "haven't implement handling of '*_funcs' sections yet"
-        )
+    for child in extras:
+        if isinstance(child, str):
+            continue
+
+        if not isinstance(child, bs4.Tag):
+            raise NotImplementedError("what the fuck is this")
+
+        if "class" not in child.attrs:
+            continue
+
+        classes: list[str] = child.attrs["class"]  # type: ignore
+        classes = [x for x in classes if x.endswith("_funcs")]
+        is_funcs_block = len(classes) > 0
+        if not is_funcs_block:
+            continue
+
+        if classes[0] == "c_funcs":
+            language = "c"
+        elif classes[0] == "e_funcs":
+            language = "eel"
+        elif classes[0] == "l_funcs":
+            language = "lua"
+        elif classes[0] == "p_funcs":
+            language = "python"
+        else:
+            raise NotImplementedError(f"language not implemented: {language}")
+
+        print(f"{repr(child)[:100]!r}")
+        for section in parse_single_language_sections(language, child.children):
+            print(repr(section)[:100])
 
     return result
 
