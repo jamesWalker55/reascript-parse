@@ -184,7 +184,7 @@ def parse_sections(
     children: Iterable[bs4.PageElement | str],
 ) -> Generator[Section, None, None]:
     """
-    Given the children of a ReaScript API documentation page's body, grouop and
+    Given the children of a ReaScript API documentation page's body, group and
     parse each section into FunctionCallSection and GenericSection sections.
     """
 
