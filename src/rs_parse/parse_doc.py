@@ -372,9 +372,9 @@ def parse(f: TextIO):
         else:
             raise NotImplementedError(f"language not implemented: {language}")
 
-        print(f"{repr(child)[:100]!r}")
         for section in parse_single_language_sections(language, child.children):
-            print(repr(section)[:100])
+            if isinstance(section, FunctionCallSection):
+                result.append(section)
 
     return result
 
