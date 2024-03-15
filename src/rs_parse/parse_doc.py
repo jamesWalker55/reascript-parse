@@ -32,7 +32,7 @@ class RawSection(NamedTuple):
     children: list[bs4.Tag | str]
 
 
-def split_sections(it: Iterable[bs4.PageElement | str]):
+def _split_sections(it: Iterable[bs4.PageElement | str]):
     """
     Given an iterable of elements, split it by 'section headers'. This expects the
     sequence to be like this:
@@ -103,7 +103,7 @@ def _iter_nested_tag_text(tag: bs4.Tag):
             yield from _iter_nested_tag_text(child)  # type: ignore
 
 
-def parse_function_call_text(prefix: str, tag: bs4.Tag) -> str:
+def _parse_function_call_text(prefix: str, tag: bs4.Tag) -> str:
     """
     Given an element and its prefix text, extract the function call text from it.
     An element is like this:
@@ -134,7 +134,7 @@ class MalformedDocsException(Exception):
     pass
 
 
-def preprocess_body(it: Iterable[bs4.PageElement | str]):
+def _preprocess_body(it: Iterable[bs4.PageElement | str]):
     """
     Preprocess the body to remove useless elements, extract some data, etc.
     This is needed because the original body is a fucking mess.
@@ -180,7 +180,7 @@ def preprocess_body(it: Iterable[bs4.PageElement | str]):
     return children[:funcs_idx], children[funcs_idx:]
 
 
-def parse_sections(
+def _parse_sections(
     children: Iterable[bs4.PageElement | str],
 ) -> Generator[Section, None, None]:
     """
@@ -188,7 +188,7 @@ def parse_sections(
     parse each section into FunctionCallSection and GenericSection sections.
     """
 
-    for section_name, children in split_sections(children):
+    for section_name, children in _split_sections(children):
         c_func: str | None = None
         e_func: str | None = None
         l_func: str | None = None
@@ -205,16 +205,16 @@ def parse_sections(
             if tagname == "DIV" and "class" in child.attrs:
                 classes: list[str] = child.attrs["class"]  # type: ignore
                 if "c_func" in classes:
-                    c_func = parse_function_call_text("C:", child)
+                    c_func = _parse_function_call_text("C:", child)
                     continue
                 elif "e_func" in classes:
-                    e_func = parse_function_call_text("EEL2:", child)
+                    e_func = _parse_function_call_text("EEL2:", child)
                     continue
                 elif "l_func" in classes:
-                    l_func = parse_function_call_text("Lua:", child)
+                    l_func = _parse_function_call_text("Lua:", child)
                     continue
                 elif "p_func" in classes:
-                    p_func = parse_function_call_text("Python:", child)
+                    p_func = _parse_function_call_text("Python:", child)
                     continue
 
             description_parts.append(child.text)
@@ -239,7 +239,7 @@ def parse_sections(
             )
 
 
-def parse_single_language_sections(
+def _parse_single_language_sections(
     language: Literal["lua", "c", "eel", "python"],
     it: Iterable[bs4.PageElement | str],
 ) -> Generator[Section, None, None]:
@@ -248,7 +248,7 @@ def parse_single_language_sections(
     into FunctionCallSection and GenericSection sections.
     """
 
-    for section_name, children in split_sections(it):
+    for section_name, children in _split_sections(it):
         description_parts: list[str] = []
 
         # find index of first <code> element
@@ -271,7 +271,7 @@ def parse_single_language_sections(
             if not isinstance(code_element, bs4.Tag):
                 raise NotImplementedError("what the fuck is this")
 
-            functioncall_text = parse_function_call_text("", code_element)
+            functioncall_text = _parse_function_call_text("", code_element)
         else:
             functioncall_text = None
 
@@ -324,7 +324,7 @@ def parse(f: TextIO):
     if soup.body is None:
         raise MalformedDocsException("<body> element is missing from documentation")
 
-    children, extras = preprocess_body(soup.body.children)
+    children, extras = _preprocess_body(soup.body.children)
     # children: the main children of the documentation, can be parsed into
     #   FunctionCalls and GenericSections
     # extras: contains special 'e_funcs', 'l_funcs' elements, they also contain
@@ -332,9 +332,7 @@ def parse(f: TextIO):
 
     result: list[FunctionCallSection] = []
 
-    for section in parse_sections(children):
-        print(repr(section)[:100])
-
+    for section in _parse_sections(children):
         if isinstance(section, GenericSection):
             # only allow 2 generic sections, all other sections are expected to be function call sections
             assert section.name in (
@@ -372,7 +370,7 @@ def parse(f: TextIO):
         else:
             raise NotImplementedError(f"language not implemented: {language}")
 
-        for section in parse_single_language_sections(language, child.children):
+        for section in _parse_single_language_sections(language, child.children):
             if isinstance(section, FunctionCallSection):
                 result.append(section)
 
@@ -395,9 +393,9 @@ def main():
             except Exception as e:
                 result.append(f"# {e}")
 
-    # with open("temp.txt", "w", encoding="utf8") as f:
-    #     for line in result:
-    #         print(line, file=f)
+    with open("temp.txt", "w", encoding="utf8") as f:
+        for line in result:
+            print(line, file=f)
 
 
 if __name__ == "__main__":
