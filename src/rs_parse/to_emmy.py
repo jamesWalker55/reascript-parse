@@ -1,4 +1,5 @@
 import textwrap
+from typing import Iterable, Literal, NamedTuple, TextIO
 
 from .parse_lua import FunctionCall
 
@@ -37,3 +38,45 @@ def function_call(fc: FunctionCall, desc: str | None, *, deprecated: bool = Fals
     declaration = f"{fc.name} = function({params}) end,"
 
     return f"{docstring}\n{declaration}"
+
+
+# https://luals.github.io/wiki/annotations/
+KNOWN_TYPES = frozenset(
+    [
+        "nil",
+        "any",
+        "boolean",
+        "string",
+        "number",
+        "integer",
+        "function",
+        "table",
+        "thread",
+        "userdata",
+        "lightuserdata",
+    ]
+)
+
+PREAMBLE = """\
+---@diagnostic disable: missing-return"""
+
+
+def format(function_calls: Iterable[FunctionCall]):
+    # group functions by their namespace
+    namespaces: dict[str, list[FunctionCall]] = {}
+    for fc in function_calls:
+        if fc.namespace not in namespaces:
+            namespaces[fc.namespace] = []
+
+        namespaces[fc.namespace].append(fc)
+
+    # find types that we need to declare
+    unknown_types: set[str] = set()
+    for fc in function_calls:
+        for p in fc.params:
+            unknown_types.add(p.type)
+        for rv in fc.retvals:
+            unknown_types.add(rv.type)
+    unknown_types = unknown_types - KNOWN_TYPES
+
+    print(unknown_types)

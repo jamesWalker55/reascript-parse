@@ -18,13 +18,19 @@ def main():
     with open(args.input, "r", encoding="utf8") as f:
         sections = parse_doc.parse(f)
 
-    # functioncalls: list[parse_lua.FunctionCall] = []
+    functioncalls: list[parse_lua.FunctionCall] = []
     for section in sections:
         if section.l_func is None:
             continue
 
         try:
             fc = parse_lua.FunctionCall.parse(section.l_func)
+            functioncalls.append(fc)
+            if fc.namespace == "reaper":
+                continue
+
+            print(fc)
+
             deprecated = (
                 "deprecated" in section.description.lower()
                 if section.description
@@ -34,8 +40,11 @@ def main():
                 fc, section.description, deprecated=deprecated
             )
             print(fc_str)
+
         except parse_lua.ParseError as e:
-            print(e)
+            print("#", e)
+
+    to_emmy.format(functioncalls)
 
     # return parse_doc.main()
     # return "Hello from rs-parse!"
