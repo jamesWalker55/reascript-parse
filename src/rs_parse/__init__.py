@@ -3,10 +3,23 @@ from argparse import ArgumentParser
 from . import parse_doc, parse_lua, to_emmy
 
 
+def info(fmt: str, *args):
+    print("[INFO] {}".format(fmt.format(*args)))
+
+
+def warn(fmt: str, *args):
+    print("[WARN] {}".format(fmt.format(*args)))
+
+
+def error(fmt: str, *args):
+    print("[ERROR] {}".format(fmt.format(*args)))
+
+
 def parse_args():
     parser = ArgumentParser()
 
     parser.add_argument("input")
+    parser.add_argument("output")
 
     return parser.parse_args()
 
@@ -20,24 +33,21 @@ def main():
     functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
     for section in sections:
         if section.l_func is None:
+            info("Skipping section with no Lua function definition {!r}", section.name)
             continue
 
         try:
             fc = parse_lua.FunctionCall.parse(section.l_func)
-            fc = to_emmy.AnnotatedFunctionCall.from_section(fc, section)
-            functioncalls.append(fc)
-            if fc.function_call.namespace == "reaper":
-                continue
-
-            print(fc)
-
-            fc_str = fc.format()
-            print(fc_str)
-
+            afc = to_emmy.AnnotatedFunctionCall.from_section(fc, section)
+            functioncalls.append(afc)
         except parse_lua.ParseError as e:
-            print("#", e)
+            warn(
+                "Skipping malformed Lua function in section {!r} - {}", section.name, e
+            )
 
-    print(to_emmy.format(functioncalls))
+    emmy: str = to_emmy.format(functioncalls)
 
-    # return parse_doc.main()
-    # return "Hello from rs-parse!"
+    with open(args.output, "w", encoding="utf8") as f:
+        f.write(emmy)
+
+    info("Lua declaration file saved to: {}", args.output)
