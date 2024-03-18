@@ -17,29 +17,21 @@ def main():
     with open(args.input, "r", encoding="utf8") as f:
         sections = parse_doc.parse(f)
 
-    functioncalls: list[
-        tuple[parse_doc.FunctionCallSection, parse_lua.FunctionCall]
-    ] = []
+    functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
     for section in sections:
         if section.l_func is None:
             continue
 
         try:
             fc = parse_lua.FunctionCall.parse(section.l_func)
-            functioncalls.append((section, fc))
-            if fc.namespace == "reaper":
+            fc = to_emmy.AnnotatedFunctionCall.from_section(fc, section)
+            functioncalls.append(fc)
+            if fc.function_call.namespace == "reaper":
                 continue
 
             print(fc)
 
-            deprecated = (
-                "deprecated" in section.description.lower()
-                if section.description
-                else False
-            )
-            fc_str = to_emmy._function_call(
-                fc, section.description, deprecated=deprecated
-            )
+            fc_str = fc.format()
             print(fc_str)
 
         except parse_lua.ParseError as e:

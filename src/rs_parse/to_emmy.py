@@ -1,58 +1,76 @@
 import textwrap
-from typing import Iterable
+from typing import Iterable, NamedTuple
 
 from rs_parse.parse_doc import FunctionCallSection
 
 from .parse_lua import FunctionCall
 
 
-def _function_call(fc: FunctionCall, desc: str | None, *, deprecated: bool = False):
-    """
-    Format a FunctionCall to a declaration like this:
-    ```lua
-    --- integer retval, string val = reaper.GetProjExtState(ReaProject proj, string extname, string key)
-    ---@param proj ReaProject
-    ---@param extname string
-    ---@param key string
-    ---@return integer, string
-    ---@deprecated
-    GetProjExtState = function (proj, extname, key) end,
-    ```
-    """
+class AnnotatedFunctionCall(NamedTuple):
+    """Wrapper around FunctionCall with additional fields for documentation"""
 
-    docstring_parts: list[str] = []
+    function_call: FunctionCall
+    description: str | None
+    deprecated: bool = False
 
-    docstring_parts.append(f"```\n{fc}\n```")
-    if desc:
-        docstring_parts.append(desc)
+    @classmethod
+    def from_section(cls, call: FunctionCall, section: FunctionCallSection):
+        deprecated = (
+            "deprecated" in section.description.lower()
+            if section.description
+            else False
+        )
+        return cls(call, section.description, deprecated=deprecated)
 
-    for param in fc.params:
-        docstring_parts.append(
-            f"@param {param.name}{'?' if param.optional else ''} {param.type}"
+    def format(self):
+        """
+        Format an AnnotatedFunctionCall to a declaration like this:
+        ```lua
+        --- integer retval, string val = reaper.GetProjExtState(ReaProject proj, string extname, string key)
+        ---@param proj ReaProject
+        ---@param extname string
+        ---@param key string
+        ---@return integer, string
+        ---@deprecated
+        GetProjExtState = function (proj, extname, key) end,
+        ```
+        """
+
+        docstring_parts: list[str] = []
+
+        docstring_parts.append(f"```\n{self}\n```")
+        if self.description:
+            docstring_parts.append(self.description)
+
+        for param in self.function_call.params:
+            docstring_parts.append(
+                f"@param {param.name}{'?' if param.optional else ''} {param.type}"
+            )
+
+        if len(self.function_call.retvals) > 0:
+            docstring_parts.append(
+                f"@return {', '.join([rv.type for rv in self.function_call.retvals])}"
+            )
+
+        if self.deprecated:
+            docstring_parts.append(f"@deprecated")
+
+        docstring = "\n".join(
+            (
+                textwrap.indent(x, "---", lambda _: True)
+                if x.startswith("@")
+                else textwrap.indent(x, "--- ", lambda _: True)
+            )
+            for x in docstring_parts
         )
 
-    if len(fc.retvals) > 0:
-        docstring_parts.append(f"@return {', '.join([rv.type for rv in fc.retvals])}")
+        # trim trailing whitespaces from docstring
+        docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
 
-    if deprecated:
-        docstring_parts.append(f"@deprecated")
+        params = ", ".join([p.name for p in self.function_call.params])
+        declaration = f"{self.function_call.name} = function({params}) end,"
 
-    docstring = "\n".join(
-        (
-            textwrap.indent(x, "---", lambda _: True)
-            if x.startswith("@")
-            else textwrap.indent(x, "--- ", lambda _: True)
-        )
-        for x in docstring_parts
-    )
-
-    # trim trailing whitespaces from docstring
-    docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
-
-    params = ", ".join([p.name for p in fc.params])
-    declaration = f"{fc.name} = function({params}) end,"
-
-    return f"{docstring}\n{declaration}"
+        return f"{docstring}\n{declaration}"
 
 
 def _declare_types(types: Iterable[str]):
@@ -101,42 +119,32 @@ PREAMBLE = """\
 ---@diagnostic disable: missing-return"""
 
 
-def format(functions: Iterable[tuple[FunctionCallSection, FunctionCall]]):
+def format(functions: Iterable[AnnotatedFunctionCall]):
     result: list[str] = []
 
     # find types that we need to declare
     unknown_types: set[str] = set()
-    for _, fc in functions:
-        for p in fc.params:
+    for fc in functions:
+        for p in fc.function_call.params:
             unknown_types.add(p.type)
-        for rv in fc.retvals:
+        for rv in fc.function_call.retvals:
             unknown_types.add(rv.type)
     unknown_types = unknown_types - KNOWN_TYPES
 
     result.append(_declare_types(unknown_types))
 
     # group functions by their namespace
-    namespaces: dict[str, list[tuple[FunctionCallSection, FunctionCall]]] = {}
-    for section, fc in functions:
-        if fc.namespace not in namespaces:
-            namespaces[fc.namespace] = []
+    namespaces: dict[str, list[AnnotatedFunctionCall]] = {}
+    for fc in functions:
+        if fc.function_call.namespace not in namespaces:
+            namespaces[fc.function_call.namespace] = []
 
-        namespaces[fc.namespace].append((section, fc))
+        namespaces[fc.function_call.namespace].append(fc)
 
     # serialise each namespace (and its functions)
     for namespace, functions in namespaces.items():
         # serialise functions
-        emmy_functions: list[str] = []
-
-        for section, fc in functions:
-            deprecated = (
-                "deprecated" in section.description.lower()
-                if section.description
-                else False
-            )
-            fc_str = _function_call(fc, section.description, deprecated=deprecated)
-
-            emmy_functions.append(fc_str)
+        emmy_functions = [fc.format() for fc in functions]
 
         parts = []
         if namespace[0] == namespace[0].lower():
