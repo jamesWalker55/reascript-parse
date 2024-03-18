@@ -7,6 +7,19 @@ from .parse_lua import FunctionCall
 
 
 def _function_call(fc: FunctionCall, desc: str | None, *, deprecated: bool = False):
+    """
+    Format a FunctionCall to a declaration like this:
+    ```lua
+    --- integer retval, string val = reaper.GetProjExtState(ReaProject proj, string extname, string key)
+    ---@param proj ReaProject
+    ---@param extname string
+    ---@param key string
+    ---@return integer, string
+    ---@deprecated
+    GetProjExtState = function (proj, extname, key) end,
+    ```
+    """
+
     docstring_parts: list[str] = []
 
     docstring_parts.append(f"```\n{fc}\n```")
@@ -43,6 +56,26 @@ def _function_call(fc: FunctionCall, desc: str | None, *, deprecated: bool = Fal
 
 
 def _declare_types(types: Iterable[str]):
+    """
+    Generate a declaration to declare the given list of class names:
+    ```lua
+    ---@class MediaTrack
+    ---@class reaper.array
+    ---@class MediaItem_Take
+    ---@class identifier
+    ---@class KbdSectionInfo
+    ---@class joystick_device
+    ---@class HWND
+    ---@class MediaItem
+    ---@class AudioAccessor
+    ---@class TrackEnvelope
+    ---@class IReaperControlSurface
+    ---@class ReaProject
+    ---@class PCM_source
+    local _ = {}
+    ```
+    """
+
     docstring = "\n".join([f"---@class {t}" for t in types])
     return f"{docstring}\nlocal _ = {{}}"
 
