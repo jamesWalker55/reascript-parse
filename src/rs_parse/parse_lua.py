@@ -164,4 +164,30 @@ class FunctionCall(NamedTuple):
 
         namespace, functionname = _
 
-        return cls(functionname, namespace, params, retvals, varargs)
+        return cls(functionname, namespace, params, retvals, varargs).sanitize()
+
+    @staticmethod
+    def _sanitize_identifier(name: str):
+        # replace invalid identifier characters with underscores '_'
+        name = re.sub(r"[^\w]", "_", name)
+        # disallow keywords as names
+        if name in ("end", "in", "for"):
+            name = f"_{name}"
+        return name
+
+    def sanitize(self):
+        new_params = [
+            FuncParam(p.type, self._sanitize_identifier(p.name), p.optional)
+            for p in self.params
+        ]
+        new_rtvals = [
+            RetVal(
+                rv.type,
+                self._sanitize_identifier(rv.name) if rv.name else None,
+                rv.optional,
+            )
+            for rv in self.retvals
+        ]
+        return FunctionCall(
+            self.name, self.namespace, new_params, new_rtvals, self.varargs
+        )
