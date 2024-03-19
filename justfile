@@ -1,2 +1,4 @@
-temp:
-  rye run rs-parse "src/rs_parse/REAPER API functions.html" "reaper.lua"
+version := "v7.08"
+
+run:
+  rye run rs-parse "reascripthelp/{{version}}.html" "reaper_{{version}}.lua" &> "reaper_{{version}}.log"
