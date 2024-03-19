@@ -4,11 +4,7 @@ from typing import Literal, NamedTuple, TextIO
 
 import bs4
 
-from rs_parse.parse_doc import (
-    FunctionCallSection,
-    _iter_nested_tag_text,
-    _parse_function_call_text,
-)
+from rs_parse.parse_doc import FunctionCallSection, _parse_function_call_text
 
 
 class RawSection(NamedTuple):
@@ -129,7 +125,29 @@ def remove_elements_before(ptr: bs4.Tag):
     while parent is not None:
         # remove each child up to the pointer
         for child in list(parent.children):
-            if child == ptr:
+            if child is ptr:
+                break
+            child.extract()
+        else:
+            # we never reached the pointer, something has gone horribly wrong
+            # this should never be reached (unless my logic is wrong)
+            assert False
+
+        # navigate to 1 level up
+        ptr = parent
+        parent = ptr.parent
+
+
+def remove_elements_after(ptr: bs4.Tag):
+    """remove everything that occur after the pointer"""
+
+    parent = ptr.parent
+    while parent is not None:
+        # remove each child up to the pointer
+        children = list(parent.children)
+        children.reverse()
+        for child in children:
+            if child is ptr:
                 break
             child.extract()
         else:
@@ -154,24 +172,6 @@ def parse_singlelang_soup(
         # we searched for <code> tags, this should always be true
         assert False
 
-    # # remove everything that occur before the function definition
-    # ptr = func
-    # parent = ptr.parent
-    # while parent is not None:
-    #     # remove each child up to the pointer
-    #     for child in list(parent.children):
-    #         if child == ptr:
-    #             break
-    #         child.extract()
-    #     else:
-    #         # we never reached the pointer, something has gone horribly wrong
-    #         # this should never be reached (unless my logic is wrong)
-    #         assert False
-
-    #     # navigate to 1 level up
-    #     ptr = parent
-    #     parent = ptr.parent
-
     # remove everything that occur before the function definition
     remove_elements_before(func)
     # finally, remove the function definition itself from the tree
@@ -185,10 +185,6 @@ def parse_singlelang_soup(
     description = description.replace("\n", "\n\n")
     if not description:
         description = None
-
-    # print(func_text)
-    # if description:
-    #     print(textwrap.indent(description, "  "))
 
     c_func: str | None = None
     e_func: str | None = None
@@ -207,8 +203,10 @@ def parse_singlelang_soup(
     return FunctionCallSection(name, c_func, e_func, l_func, p_func, description)
 
 
-def parse(f: TextIO):
+def parse(f: TextIO) -> list[FunctionCallSection]:
     raw_sections = RawSection.parse(f)
+
+    result: list[FunctionCallSection] = []
 
     for section in raw_sections:
         if section.name in IGNORED_SECTIONS:
@@ -225,22 +223,18 @@ def parse(f: TextIO):
 
         soup = bs4.BeautifulSoup(section.text, "html.parser")
 
-        # remove <h2> headers
-        pop_from_soup(soup, "h2")
-
-        # indented_soup = textwrap.indent(str(soup), "  ")
-        # # if len(indented_soup.splitlines()) > 7:
-        # if single_language:
-        #     print(f"=={single_language} {section.name}")
-        # else:
-        #     print(section.name)
-        # print(indented_soup)
+        # remove <h2> headers and everything after them
+        h2 = soup.find("h2")
+        if h2 is not None:
+            assert isinstance(h2, bs4.Tag)
+            remove_elements_after(h2)
+            h2.extract()
 
         if single_language:
             fc = parse_singlelang_soup(section.name, soup, single_language)
         else:
             fc = parse_multilang_soup(section.name, soup)
 
-        print(section.name)
-        if fc.description:
-            print(textwrap.indent(fc.description, "  "))
+        result.append(fc)
+
+    return result
