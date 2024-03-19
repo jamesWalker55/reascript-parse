@@ -38,7 +38,7 @@ class AnnotatedFunctionCall(NamedTuple):
 
         docstring_parts: list[str] = []
 
-        docstring_parts.append(f"```\n{self}\n```")
+        docstring_parts.append(f"```\n{self.function_call}\n```")
         if self.description:
             docstring_parts.append(self.description)
 
@@ -120,7 +120,7 @@ PREAMBLE = """\
 
 
 def format(functions: Iterable[AnnotatedFunctionCall]):
-    result: list[str] = []
+    result: list[str] = [PREAMBLE]
 
     # find types that we need to declare
     unknown_types: set[str] = set()
