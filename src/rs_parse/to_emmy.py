@@ -131,7 +131,7 @@ def format(functions: Iterable[AnnotatedFunctionCall]):
             unknown_types.add(rv.type)
     unknown_types = unknown_types - KNOWN_TYPES
 
-    result.append(_declare_types(unknown_types))
+    result.append(_declare_types(sorted(unknown_types)))
 
     # group functions by their namespace
     namespaces: dict[str, list[AnnotatedFunctionCall]] = {}
