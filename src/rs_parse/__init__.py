@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 
-from . import parse_doc, parse_lua, to_emmy
+from . import parse_doc_alt, parse_lua, to_emmy
 
 
 def info(fmt: str, *args):
@@ -28,7 +28,7 @@ def main():
     args = parse_args()
 
     with open(args.input, "r", encoding="utf8") as f:
-        sections = parse_doc.parse(f)
+        sections = parse_doc_alt.parse(f)
 
     functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
     for section in sections:
