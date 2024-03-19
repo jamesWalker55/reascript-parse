@@ -318,7 +318,7 @@ def _parse_single_language_sections(
             )
 
 
-def parse(f: TextIO):
+def parse(f: TextIO) -> list[FunctionCallSection]:
     soup = bs4.BeautifulSoup(f.read(), "html.parser")
 
     if soup.body is None:
