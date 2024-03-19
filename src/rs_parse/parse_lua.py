@@ -1,6 +1,16 @@
 import re
 from typing import NamedTuple, Optional
 
+KNOWN_TYPES = frozenset(
+    [
+        "boolean",
+        "string",
+        "number",
+        "integer",
+        "function",
+    ]
+)
+
 
 class ParseError(Exception):
     def __init__(self, source_text: str, msg: str) -> None:
@@ -62,10 +72,13 @@ class FuncParam(NamedTuple):
         else:
             optional = False
 
-        if len(parts) != 2:
+        if len(parts) == 2:
+            type, name = parts
+        elif len(parts) == 1 and parts[0] in KNOWN_TYPES:
+            type = parts[0]
+            name = parts[0][:3]
+        else:
             raise ParseError(text, "malformed function parameter")
-
-        type, name = parts
 
         return cls(type, name, optional)
 
