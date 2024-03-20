@@ -8,6 +8,7 @@ KNOWN_TYPES = frozenset(
         "number",
         "integer",
         "function",
+        "MediaItem",
     ]
 )
 
@@ -43,6 +44,10 @@ class RetVal(NamedTuple):
             # ' MediaItem item '
             type, name = parts
             return cls(type, name, optional)
+        elif len(parts) == 1 and parts[0] in KNOWN_TYPES:
+            type = parts[0]
+            name = parts[0][:3].lower()
+            return cls(type, name, optional)
         else:
             raise ParseError(text, "malformed return value")
 
@@ -76,7 +81,7 @@ class FuncParam(NamedTuple):
             type, name = parts
         elif len(parts) == 1 and parts[0] in KNOWN_TYPES:
             type = parts[0]
-            name = parts[0][:3]
+            name = parts[0][:3].lower()
         else:
             raise ParseError(text, "malformed function parameter")
 
