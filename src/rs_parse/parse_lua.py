@@ -97,6 +97,7 @@ class FunctionCall(NamedTuple):
     params: list[FuncParam]
     retvals: list[RetVal]
     varargs: bool
+    is_class_method: bool
 
     def __str__(self) -> str:
         params = ", ".join(str(x) for x in self.params)
@@ -176,8 +177,20 @@ class FunctionCall(NamedTuple):
             raise ParseError(text, "failed to parse namespace")
 
         namespace, functionname = _
+        if namespace.startswith("{") and namespace.endswith("}"):
+            namespace = namespace[1:-1]
+            is_class_method = True
+        else:
+            is_class_method = False
 
-        return cls(functionname, namespace, params, retvals, varargs).sanitize()
+        return cls(
+            functionname,
+            namespace,
+            params,
+            retvals,
+            varargs,
+            is_class_method,
+        ).sanitize()
 
     @staticmethod
     def _sanitize_identifier(name: str):
@@ -202,5 +215,10 @@ class FunctionCall(NamedTuple):
             for rv in self.retvals
         ]
         return FunctionCall(
-            self.name, self.namespace, new_params, new_rtvals, self.varargs
+            self.name,
+            self.namespace,
+            new_params,
+            new_rtvals,
+            self.varargs,
+            self.is_class_method,
         )

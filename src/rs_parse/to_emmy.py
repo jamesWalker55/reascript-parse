@@ -22,6 +22,40 @@ class AnnotatedFunctionCall(NamedTuple):
         )
         return cls(call, section.description, deprecated=deprecated)
 
+    def docstring(self):
+        parts: list[str] = []
+
+        parts.append(f"```\n{self.function_call}\n```")
+        if self.description:
+            parts.append(self.description)
+
+        for param in self.function_call.params:
+            parts.append(
+                f"@param {param.name}{'?' if param.optional else ''} {param.type}"
+            )
+
+        if len(self.function_call.retvals) > 0:
+            parts.append(
+                f"@return {', '.join([rv.type for rv in self.function_call.retvals])}"
+            )
+
+        if self.deprecated:
+            parts.append(f"@deprecated")
+
+        docstring = "\n".join(
+            (
+                textwrap.indent(x, "---", lambda _: True)
+                if x.startswith("@")
+                else textwrap.indent(x, "--- ", lambda _: True)
+            )
+            for x in parts
+        )
+
+        # trim trailing whitespaces from docstring
+        docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
+
+        return docstring
+
     def format(self):
         """
         Format an AnnotatedFunctionCall to a declaration like this:
@@ -35,40 +69,18 @@ class AnnotatedFunctionCall(NamedTuple):
         GetProjExtState = function (proj, extname, key) end,
         ```
         """
-
-        docstring_parts: list[str] = []
-
-        docstring_parts.append(f"```\n{self.function_call}\n```")
-        if self.description:
-            docstring_parts.append(self.description)
-
-        for param in self.function_call.params:
-            docstring_parts.append(
-                f"@param {param.name}{'?' if param.optional else ''} {param.type}"
-            )
-
-        if len(self.function_call.retvals) > 0:
-            docstring_parts.append(
-                f"@return {', '.join([rv.type for rv in self.function_call.retvals])}"
-            )
-
-        if self.deprecated:
-            docstring_parts.append(f"@deprecated")
-
-        docstring = "\n".join(
-            (
-                textwrap.indent(x, "---", lambda _: True)
-                if x.startswith("@")
-                else textwrap.indent(x, "--- ", lambda _: True)
-            )
-            for x in docstring_parts
-        )
-
-        # trim trailing whitespaces from docstring
-        docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
+        docstring = self.docstring()
 
         params = ", ".join([p.name for p in self.function_call.params])
         declaration = f"{self.function_call.name} = function({params}) end,"
+
+        return f"{docstring}\n{declaration}"
+
+    def format_method(self, variable: str):
+        docstring = self.docstring()
+
+        params = ", ".join([p.name for p in self.function_call.params])
+        declaration = f"function {variable}:{self.function_call.name}({params}) end"
 
         return f"{docstring}\n{declaration}"
 
@@ -96,6 +108,35 @@ def _declare_types(types: Iterable[str]):
 
     docstring = "\n".join([f"---@class {t}" for t in types])
     return f"{docstring}\nlocal _ = {{}}"
+
+
+def _declare_class_methods(annotated_functions: Iterable[AnnotatedFunctionCall]):
+    # validation
+    for afc in annotated_functions:
+        if not afc.function_call.is_class_method:
+            raise ValueError(
+                f"attempted to declare non-class-method as class method: {afc}"
+            )
+
+    unique_namespaces = set(
+        [afc.function_call.namespace for afc in annotated_functions]
+    )
+    if len(unique_namespaces) == 0:
+        raise ValueError("no functions given")
+    if len(unique_namespaces) > 1:
+        raise ValueError(
+            "given functions belong to various namespaces, this function can only process one namespace at a time"
+        )
+    namespace = unique_namespaces.pop()
+
+    parts: list[str] = []
+
+    parts.append(f"---@class {namespace}\nlocal _ = {{}}")
+
+    for afc in annotated_functions:
+        parts.append(afc.format_method("_"))
+
+    return "\n\n".join(parts)
 
 
 # https://luals.github.io/wiki/annotations/
@@ -143,20 +184,26 @@ def format(functions: Iterable[AnnotatedFunctionCall]):
 
     # serialise each namespace (and its functions)
     for namespace, functions in namespaces.items():
-        # serialise functions
-        emmy_functions = [fc.format() for fc in functions]
+        is_class_namespace = functions[0].function_call.is_class_method
+        if is_class_namespace:
+            # serialise functions
+            emmy_functions = _declare_class_methods(functions)
+            result.append(emmy_functions)
+        else:
+            # serialise functions
+            emmy_functions = [fc.format() for fc in functions]
 
-        parts = []
-        if namespace[0] == namespace[0].lower():
-            # namespace starts with lowercase letter
-            parts.append("---@diagnostic disable-next-line: lowercase-global")
-        parts.extend(
-            [
-                f"{namespace} = {{",
-                textwrap.indent("\n\n".join(emmy_functions), "    "),
-                "}",
-            ]
-        )
-        result.append("\n".join(parts))
+            parts = []
+            if namespace[0] == namespace[0].lower():
+                # namespace starts with lowercase letter
+                parts.append("---@diagnostic disable-next-line: lowercase-global")
+            parts.extend(
+                [
+                    f"{namespace} = {{",
+                    textwrap.indent("\n\n".join(emmy_functions), "    "),
+                    "}",
+                ]
+            )
+            result.append("\n".join(parts))
 
     return "\n\n".join(result)
