@@ -72,3 +72,5 @@ The documentation is usually poorly formatted, so some functions may fail to par
 [WARN] Skipping malformed Lua function in section 'lua_gfx.blurto' - malformed function parameter: 'gfx.blurto(x,y)'
 [WARN] Skipping malformed Lua function in section 'lua_gfx.circle' - failed to find params: 'gfx.circle(x,y,r[,fill,antialias])'
 ```
+
+To parse the failed functions, you should manually fix the source HTML before parsing it.
