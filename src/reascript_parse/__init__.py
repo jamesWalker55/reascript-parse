@@ -36,12 +36,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def _main() -> int:
     args = parse_args()
 
     if args.action != "to-lua":
         error(f"Action {args.action!r} not yet implemented!")
-        return
+        return 1
 
     with open(args.input, "r", encoding="utf8") as f:
         sections = parse_doc_alt.parse(f)
@@ -67,3 +67,11 @@ def main():
         f.write(emmy)
 
     info("Lua declaration file saved to: {}", args.output)
+
+    return 0
+
+
+def main():
+    import sys
+
+    sys.exit(_main())
