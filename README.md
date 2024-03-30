@@ -14,6 +14,8 @@ rye sync
 
 ## Generating Lua Definitions
 
+![REAPER intellisense for Lua in VSCode](docs/intellisense.png)
+
 Currently the only action implemented is 'to-lua', which generates a Lua declaration file containing all functions in the documentation:
 
 ```sh
