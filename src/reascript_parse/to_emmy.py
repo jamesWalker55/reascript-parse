@@ -1,7 +1,7 @@
 import textwrap
 from typing import Iterable, NamedTuple
 
-from rs_parse.parse_doc import FunctionCallSection
+from reascript_parse.parse_doc import FunctionCallSection
 
 from .parse_lua import FunctionCall
 

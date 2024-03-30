@@ -4,7 +4,7 @@ from typing import Literal, NamedTuple, TextIO
 
 import bs4
 
-from rs_parse.parse_doc import FunctionCallSection, _parse_function_call_text
+from reascript_parse.parse_doc import FunctionCallSection, _parse_function_call_text
 
 
 class RawSection(NamedTuple):

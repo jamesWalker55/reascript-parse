@@ -9,6 +9,6 @@
 
 -e file:.
 beautifulsoup4==4.12.3
-    # via rs-parse
+    # via reascript-parse
 soupsieve==2.5
     # via beautifulsoup4

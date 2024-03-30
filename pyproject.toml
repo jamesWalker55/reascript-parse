@@ -1,5 +1,5 @@
 [project]
-name = "rs-parse"
+name = "reascript-parse"
 version = "0.1.0"
 description = "Add your description here"
 authors = [
@@ -12,7 +12,7 @@ readme = "README.md"
 requires-python = ">= 3.8"
 
 [project.scripts]
-rs-parse = "rs_parse:main"
+reascript-parse = "reascript_parse:main"
 
 [build-system]
 requires = ["hatchling"]
@@ -28,4 +28,4 @@ dev-dependencies = [
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/rs_parse"]
+packages = ["src/reascript_parse"]

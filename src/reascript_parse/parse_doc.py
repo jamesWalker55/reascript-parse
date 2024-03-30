@@ -380,7 +380,7 @@ def parse(f: TextIO) -> list[FunctionCallSection]:
 def main():
     from .parse_lua import FunctionCall
 
-    with open("src/rs_parse/REAPER API functions.html", "r", encoding="utf8") as f:
+    with open("src/reascript_parse/REAPER API functions.html", "r", encoding="utf8") as f:
         sections = parse(f)
 
     result: list[str] = []
