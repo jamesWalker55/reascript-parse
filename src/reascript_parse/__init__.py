@@ -18,14 +18,30 @@ def error(fmt: str, *args):
 def parse_args():
     parser = ArgumentParser()
 
-    parser.add_argument("input")
-    parser.add_argument("output")
+    subparsers = parser.add_subparsers()
+
+    sp = subparsers.add_parser(
+        "to-lua", help="generate Lua definitions from ReaScript documentation"
+    )
+    sp.set_defaults(action="to-lua")
+    sp.add_argument(
+        "input",
+        help="the input ReaScript documentation, e.g. C:/Users/YOUR_NAME/AppData/Local/Temp/reascripthelp.html",
+    )
+    sp.add_argument(
+        "output",
+        help="where to save the generated Lua definitions, e.g. ./reaper.lua",
+    )
 
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
+
+    if args.action != "to-lua":
+        error(f"Action {args.action!r} not yet implemented!")
+        return
 
     with open(args.input, "r", encoding="utf8") as f:
         sections = parse_doc_alt.parse(f)
