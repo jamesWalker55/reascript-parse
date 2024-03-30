@@ -10,7 +10,7 @@
 -e file:.
 beautifulsoup4==4.12.3
     # via reascript-parse
-black==24.2.0
+black==24.3.0
 click==8.1.7
     # via black
 colorama==0.4.6
