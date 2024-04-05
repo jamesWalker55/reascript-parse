@@ -18,7 +18,7 @@ def error(fmt: str, *args):
 def parse_args():
     parser = ArgumentParser()
 
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
 
     sp = subparsers.add_parser(
         "to-lua", help="generate Lua definitions from ReaScript documentation"
