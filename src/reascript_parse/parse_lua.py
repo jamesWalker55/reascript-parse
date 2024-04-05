@@ -12,6 +12,8 @@ KNOWN_TYPES = frozenset(
     ]
 )
 
+LUA_KEYWORDS = frozenset(["end", "in", "for", "repeat"])
+
 
 class ParseError(Exception):
     def __init__(self, source_text: str, msg: str) -> None:
@@ -202,7 +204,7 @@ class FunctionCall(NamedTuple):
         # replace invalid identifier characters with underscores '_'
         name = re.sub(r"[^\w]", "_", name)
         # disallow keywords as names
-        if name in ("end", "in", "for"):
+        if name in LUA_KEYWORDS:
             name = f"_{name}"
         return name
 
