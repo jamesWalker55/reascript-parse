@@ -1,20 +1,9 @@
 from argparse import ArgumentParser
 
 from reascript_parse import to_ts
+from reascript_parse.utils import error, info, warn
 
 from . import parse_doc_alt, parse_lua, to_emmy
-
-
-def info(fmt: str, *args):
-    print("[INFO] {}".format(fmt.format(*args)))
-
-
-def warn(fmt: str, *args):
-    print("[WARN] {}".format(fmt.format(*args)))
-
-
-def error(fmt: str, *args):
-    print("[ERROR] {}".format(fmt.format(*args)))
 
 
 def parse_args():

@@ -1,6 +1,7 @@
 import textwrap
 from typing import Iterable, NamedTuple
 
+from reascript_parse.utils import error
 from reascript_parse.parse_doc import FunctionCallSection
 
 from .parse_lua import FuncParam, FunctionCall, RetVal
@@ -109,6 +110,9 @@ def _declare_types(types: Iterable[str]):
     parts.append("")
 
     for t in types:
+        if "." in t:
+            error("Type name {!r} contains a dot character, skipping this class", t)
+            continue
         parts.append(f"declare type {t} = {{ readonly [opaqueTypeTag]: '{t}' }};")
 
     return "\n".join(parts)
