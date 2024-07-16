@@ -15,6 +15,16 @@ KNOWN_TYPES = frozenset(
 LUA_KEYWORDS = frozenset(["end", "in", "for", "repeat"])
 
 
+def sanitise_identifier_name(name: str) -> str:
+    """Remove weird characters from a name, e.g. dots '.'"""
+    # replace invalid identifier characters with underscores '_'
+    name = re.sub("[^0-9a-zA-Z_]+", "_", name)
+    # disallow keywords as names
+    if name in LUA_KEYWORDS:
+        name = f"_{name}"
+    return name
+
+
 class ParseError(Exception):
     def __init__(self, source_text: str, msg: str) -> None:
         super().__init__(f"{msg}: {source_text!r}")
@@ -45,11 +55,19 @@ class RetVal(NamedTuple):
             # Format: <TYPE> <NAME>
             # ' MediaItem item '
             type, name = parts
-            return cls(type, name, optional)
+            return cls(
+                sanitise_identifier_name(type),
+                sanitise_identifier_name(name) if name else None,
+                optional,
+            )
         elif len(parts) == 1 and parts[0] in KNOWN_TYPES:
             type = parts[0]
             name = parts[0][:3].lower()
-            return cls(type, name, optional)
+            return cls(
+                sanitise_identifier_name(type),
+                sanitise_identifier_name(name) if name else None,
+                optional,
+            )
         else:
             raise ParseError(text, "malformed return value")
 
@@ -87,7 +105,9 @@ class FuncParam(NamedTuple):
         else:
             raise ParseError(text, "malformed function parameter")
 
-        return cls(type, name, optional)
+        return cls(
+            sanitise_identifier_name(type), sanitise_identifier_name(name), optional
+        )
 
     def __str__(self) -> str:
         if self.optional:
@@ -197,35 +217,4 @@ class FunctionCall(NamedTuple):
             retvals,
             varargs,
             is_class_method,
-        ).sanitize()
-
-    @staticmethod
-    def _sanitize_identifier(name: str):
-        # replace invalid identifier characters with underscores '_'
-        name = re.sub(r"[^\w]", "_", name)
-        # disallow keywords as names
-        if name in LUA_KEYWORDS:
-            name = f"_{name}"
-        return name
-
-    def sanitize(self):
-        new_params = [
-            FuncParam(p.type, self._sanitize_identifier(p.name), p.optional)
-            for p in self.params
-        ]
-        new_rtvals = [
-            RetVal(
-                rv.type,
-                self._sanitize_identifier(rv.name) if rv.name else None,
-                rv.optional,
-            )
-            for rv in self.retvals
-        ]
-        return FunctionCall(
-            self.name,
-            self.namespace,
-            new_params,
-            new_rtvals,
-            self.varargs,
-            self.is_class_method,
         )
