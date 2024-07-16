@@ -16,7 +16,7 @@ rye sync
 
 ![REAPER intellisense for Lua in VSCode](docs/intellisense.png)
 
-Currently the only action implemented is 'to-lua', which generates a Lua declaration file containing all functions in the documentation:
+The action 'to-lua' generates a Lua declaration file containing all functions in the documentation:
 
 ```sh
 # example usage:
@@ -25,7 +25,7 @@ reascript-parse to-lua reascripthelp.html reaper.lua
 
 The generated file contains definitions like this:
 
-```lua
+````lua
 ---@diagnostic disable-next-line: lowercase-global
 reaper = {
     --- ```
@@ -63,7 +63,7 @@ reaper = {
     adjustZoom = function(amt, forceset, doupd, centermode) end,
 
     -- ...
-```
+````
 
 The documentation is usually poorly formatted, so some functions may fail to parse. These functions are logged to the console then skipped:
 
@@ -76,3 +76,12 @@ The documentation is usually poorly formatted, so some functions may fail to par
 ```
 
 To parse the failed functions, you should manually fix the source HTML before parsing it.
+
+## Generating TypeScript Definitions
+
+The action 'to-ts' generates a TypeScript declaration file containing all functions in the documentation:
+
+```sh
+# example usage:
+reascript-parse to-ts reascripthelp.html reaper.d.ts
+```
