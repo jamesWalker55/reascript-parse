@@ -39,34 +39,40 @@ def parse_args():
 def _main() -> int:
     args = parse_args()
 
-    if args.action != "to-lua":
+    if args.action == "to-lua":
+        with open(args.input, "r", encoding="utf8") as f:
+            sections = parse_doc_alt.parse(f)
+
+        functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
+        for section in sections:
+            if section.l_func is None:
+                info(
+                    "Skipping section with no Lua function definition {!r}",
+                    section.name,
+                )
+                continue
+
+            try:
+                fc = parse_lua.FunctionCall.parse(section.l_func)
+                afc = to_emmy.AnnotatedFunctionCall.from_section(fc, section)
+                functioncalls.append(afc)
+            except parse_lua.ParseError as e:
+                warn(
+                    "Skipping malformed Lua function in section {!r} - {}",
+                    section.name,
+                    e,
+                )
+
+        emmy: str = to_emmy.format(functioncalls)
+
+        with open(args.output, "w", encoding="utf8") as f:
+            f.write(emmy)
+
+        info("Lua declaration file saved to: {}", args.output)
+
+    else:
         error(f"Action {args.action!r} not yet implemented!")
         return 1
-
-    with open(args.input, "r", encoding="utf8") as f:
-        sections = parse_doc_alt.parse(f)
-
-    functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
-    for section in sections:
-        if section.l_func is None:
-            info("Skipping section with no Lua function definition {!r}", section.name)
-            continue
-
-        try:
-            fc = parse_lua.FunctionCall.parse(section.l_func)
-            afc = to_emmy.AnnotatedFunctionCall.from_section(fc, section)
-            functioncalls.append(afc)
-        except parse_lua.ParseError as e:
-            warn(
-                "Skipping malformed Lua function in section {!r} - {}", section.name, e
-            )
-
-    emmy: str = to_emmy.format(functioncalls)
-
-    with open(args.output, "w", encoding="utf8") as f:
-        f.write(emmy)
-
-    info("Lua declaration file saved to: {}", args.output)
 
     return 0
 
