@@ -33,6 +33,9 @@ class AnnotatedFunctionCall(NamedTuple):
             parts.append(f"@deprecated")
 
         docstring = "\n".join(textwrap.indent(x, " * ", lambda _: True) for x in parts)
+        # remove any comment-ending things in the docstring
+        docstring = docstring.replace("*/", "* /")
+        docstring = f"/**\n{docstring}\n */"
 
         # trim trailing whitespaces from docstring
         docstring = "\n".join([l.rstrip() for l in docstring.splitlines()])
