@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+from reascript_parse import to_ts
+
 from . import parse_doc_alt, parse_lua, to_emmy
 
 
@@ -31,6 +33,19 @@ def parse_args():
     sp.add_argument(
         "output",
         help="where to save the generated Lua definitions, e.g. ./reaper.lua",
+    )
+
+    sp = subparsers.add_parser(
+        "to-ts", help="generate TypeScript definitions from ReaScript documentation"
+    )
+    sp.set_defaults(action="to-ts")
+    sp.add_argument(
+        "input",
+        help="the input ReaScript documentation, e.g. C:/Users/YOUR_NAME/AppData/Local/Temp/reascripthelp.html",
+    )
+    sp.add_argument(
+        "output",
+        help="where to save the generated TypeScript definitions, e.g. ./reaper.d.ts",
     )
 
     return parser.parse_args()
@@ -69,6 +84,37 @@ def _main() -> int:
             f.write(emmy)
 
         info("Lua declaration file saved to: {}", args.output)
+
+    elif args.action == "to-ts":
+        with open(args.input, "r", encoding="utf8") as f:
+            sections = parse_doc_alt.parse(f)
+
+        ts_fc: list[to_ts.AnnotatedFunctionCall] = []
+        for section in sections:
+            if section.l_func is None:
+                info(
+                    "Skipping section with no Lua function definition {!r}",
+                    section.name,
+                )
+                continue
+
+            try:
+                fc = parse_lua.FunctionCall.parse(section.l_func)
+                afc = to_ts.AnnotatedFunctionCall.from_section(fc, section)
+                ts_fc.append(afc)
+            except parse_lua.ParseError as e:
+                warn(
+                    "Skipping malformed Lua function in section {!r} - {}",
+                    section.name,
+                    e,
+                )
+
+        result: str = to_ts.format(ts_fc)
+
+        with open(args.output, "w", encoding="utf8") as f:
+            f.write(result)
+
+        info("TypeScript declaration file saved to: {}", args.output)
 
     else:
         error(f"Action {args.action!r} not yet implemented!")
