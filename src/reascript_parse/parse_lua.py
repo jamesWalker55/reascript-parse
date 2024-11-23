@@ -6,6 +6,7 @@ from .utils import warn
 
 KNOWN_TYPES = frozenset(
     [
+        "any",
         "boolean",
         "string",
         "number",
@@ -103,6 +104,7 @@ class FuncParam(NamedTuple):
     type: str
     name: str
     optional: bool
+    varargs: bool
 
     @classmethod
     def parse(cls, text: str):
@@ -125,8 +127,99 @@ class FuncParam(NamedTuple):
             raise ParseError(text, "malformed function parameter")
 
         return cls(
-            sanitise_identifier_name(type), sanitise_identifier_name(name), optional
+            sanitise_identifier_name(type),
+            sanitise_identifier_name(name),
+            optional,
+            False,
         )
+
+    @classmethod
+    def parse_fucked(cls, text: str):
+        """
+        Parse fucked up annotations like whatever this is:
+        ```
+        gfx.drawstr("str"[,flags,right,bottom])
+        ```
+        """
+
+        def skip_whitespace(i: int):
+            while True:
+                if i == len(text):
+                    return i
+
+                if text[i] != " ":
+                    return i
+
+                i += 1
+
+        def parse_string_term(i: int):
+            assert text[i] == '"'
+
+            foundpos = text.find('"', i + 1)
+            if foundpos == -1:
+                raise ParseError(text, "unterminated string in parameters")
+
+            new_i = foundpos + 1
+            identifier = sanitise_identifier_name(text[i + 1 : foundpos])
+
+            return new_i, identifier
+
+        def is_identifier_char(x: str):
+            return re.fullmatch(r"[\d\w_\-]", x) is not None
+
+        def parse_term(i: int):
+            """parse a single term (not a string quoted term)"""
+            assert is_identifier_char(text[i])
+
+            start_i = i
+            while True:
+                if i == len(text):
+                    term = text[start_i:i]
+                    return i, term
+
+                if not is_identifier_char(text[i]):
+                    term = text[start_i:i]
+                    return i, term
+
+                i += 1
+
+        i = 0
+        terms: list[FuncParam] = []
+        in_brackets = False
+
+        while True:
+            i = skip_whitespace(i)
+
+            if i == len(text):
+                return terms
+
+            # i is a non-whitespace character
+
+            if text[i] == '"':
+                i, term = parse_string_term(i)
+                terms.append(FuncParam("string", term, in_brackets, False))
+            elif text[i] == "[":
+                i += 1
+                if in_brackets:
+                    raise ParseError(text, "nested brackets in parameters")
+                in_brackets = True
+            elif text[i] == "]":
+                i += 1
+                if not in_brackets:
+                    raise ParseError(text, "unpaired closing bracket in parameters")
+                in_brackets = False
+            elif text[i] == ",":
+                i += 1
+            elif text[i : i + 3] == "...":
+                i += 3
+                terms.append(FuncParam("any", "varargs", in_brackets, True))
+            elif is_identifier_char(text[i]):
+                i, term = parse_term(i)
+                terms.append(FuncParam("any", term, in_brackets, False))
+            else:
+                raise ParseError(
+                    text, f"failed to parse parameters {text!r} at index {i}"
+                )
 
     def __str__(self) -> str:
         if self.optional:
@@ -169,7 +262,7 @@ class FunctionCall(NamedTuple):
         retvals = _[0] if len(_) == 2 else None
 
         # find the parameters for this functioncall
-        params_match = re.search(r"\(([A-Za-z0-9 _.,\n]*)\)", call)
+        params_match = re.search(r"\(([A-Za-z0-9 _.,\n\[\]\"]*)\)", call)
         if params_match is None:
             raise ParseError(text, "failed to find params")
 
@@ -190,7 +283,15 @@ class FunctionCall(NamedTuple):
             try:
                 params = [FuncParam.parse(x) for x in params_str.split(",")]
             except ParseError as e:
-                raise ParseError(text, e.msg)
+                warn(
+                    "Failed to parse parameters with default parser due to {!r}, trying unstable bruteforce parser: {!r}",
+                    e.msg,
+                    text,
+                )
+                try:
+                    params = FuncParam.parse_fucked(params_str)
+                except ParseError as e:
+                    raise ParseError(text, e.msg)
 
         # determine the name and return values of this functioncall
         # handled differently depending on if there is an assignment, "... = ..."
@@ -235,13 +336,24 @@ class FunctionCall(NamedTuple):
         for p in params:
             if last_param_was_optional and not p.optional:
                 warn(
-                    f"Optional parameter followed by required parameter in {functionname!r}, forcing all parameters to be required"
+                    "Optional parameter followed by required parameter in {!r}, forcing all parameters to be required: {!r}",
+                    functionname,
+                    text,
                 )
                 found_optional_violation = True
                 break
             last_param_was_optional = p.optional
         if found_optional_violation:
-            params = [FuncParam(p.type, p.name, False) for p in params]
+            params = [FuncParam(p.type, p.name, False, p.varargs) for p in params]
+
+        # validate params: varargs can't be followed by any other params
+        last_param_was_varargs = False
+        for p in params:
+            if last_param_was_varargs:
+                raise ParseError(
+                    text, "varargs parameter followed by another parameter"
+                )
+            last_param_was_varargs = p.varargs
 
         return cls(
             functionname,

@@ -1,8 +1,7 @@
 import textwrap
 from typing import Iterable, NamedTuple
 
-from reascript_parse.parse_doc import FunctionCallSection
-
+from .parse_doc import FunctionCallSection
 from .parse_lua import FunctionCall
 
 
@@ -30,6 +29,9 @@ class AnnotatedFunctionCall(NamedTuple):
             parts.append(self.description)
 
         for param in self.function_call.params:
+            if param.varargs:
+                continue
+
             parts.append(
                 f"@param {param.name}{'?' if param.optional else ''} {param.type}"
             )
@@ -71,7 +73,9 @@ class AnnotatedFunctionCall(NamedTuple):
         """
         docstring = self.docstring()
 
-        params = ", ".join([p.name for p in self.function_call.params])
+        params = ", ".join(
+            ["..." if p.varargs else p.name for p in self.function_call.params]
+        )
         declaration = f"{self.function_call.name} = function({params}) end,"
 
         return f"{docstring}\n{declaration}"
@@ -79,7 +83,9 @@ class AnnotatedFunctionCall(NamedTuple):
     def format_method(self, variable: str):
         docstring = self.docstring()
 
-        params = ", ".join([p.name for p in self.function_call.params])
+        params = ", ".join(
+            ["..." if p.varargs else p.name for p in self.function_call.params]
+        )
         declaration = f"function {variable}:{self.function_call.name}({params}) end"
 
         return f"{docstring}\n{declaration}"
