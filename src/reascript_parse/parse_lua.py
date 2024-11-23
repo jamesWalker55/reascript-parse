@@ -32,6 +32,14 @@ class ParseError(Exception):
         self.source_text = source_text
 
 
+def starts_with_uppercase_letter(text: str) -> bool:
+    x = text[0]
+    if len(x) == 0:
+        return False
+
+    return x == x.upper()
+
+
 class RetVal(NamedTuple):
     """A return value for a functioncall"""
 
@@ -60,7 +68,12 @@ class RetVal(NamedTuple):
                 sanitise_identifier_name(name) if name else None,
                 optional,
             )
-        elif len(parts) == 1 and parts[0] in KNOWN_TYPES:
+        elif len(parts) == 1 and (
+            parts[0] in KNOWN_TYPES
+            or
+            # the first letter is an uppercase letter, assume it is some kind of class name
+            starts_with_uppercase_letter(parts[0])
+        ):
             type = parts[0]
             name = parts[0][:3].lower()
             return cls(
