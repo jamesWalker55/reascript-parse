@@ -1,10 +1,53 @@
 import re
-import textwrap
 from typing import Literal, NamedTuple, TextIO
 
 import bs4
 
-from reascript_parse.parse_doc import FunctionCallSection, _parse_function_call_text
+
+class FunctionCallSection(NamedTuple):
+    name: str | None
+    c_func: str | None
+    e_func: str | None
+    l_func: str | None
+    p_func: str | None
+    description: str | None
+
+
+def _iter_nested_tag_text(tag: bs4.Tag):
+    """Iterate through all text within the given element"""
+
+    for child in tag.children:
+        if isinstance(child, str):
+            yield child
+        else:
+            yield from _iter_nested_tag_text(child)  # type: ignore
+
+
+def _parse_function_call_text(prefix: str, tag: bs4.Tag) -> str:
+    """
+    Given an element and its prefix text, extract the function call text from it.
+    An element is like this:
+    ```html
+    <div class="l_func">
+        <span class='all_view'>Lua:</span>
+        <code>
+            <i>MediaItem</i> reaper.AddMediaItemToTrack(<i>MediaTrack</i> tr)
+        </code>
+        <br>
+        <br>
+    </div>
+    ```
+    """
+
+    text = " ".join(_iter_nested_tag_text(tag))
+    text = text.strip()
+
+    if not text.startswith(prefix):
+        raise AssertionError(
+            f"expected function text to begin with {prefix!r}: {text!r}"
+        )
+
+    return text[len(prefix) :].strip()
 
 
 class RawSection(NamedTuple):

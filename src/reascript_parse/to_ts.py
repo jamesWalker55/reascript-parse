@@ -1,8 +1,8 @@
 import textwrap
 from typing import Iterable, NamedTuple
 
+from reascript_parse.parse_doc_alt import FunctionCallSection
 from reascript_parse.utils import error
-from reascript_parse.parse_doc import FunctionCallSection
 
 from .parse_lua import FuncParam, FunctionCall, RetVal
 
