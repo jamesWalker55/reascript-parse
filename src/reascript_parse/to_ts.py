@@ -110,9 +110,7 @@ def _declare_types(types: Iterable[str]):
     parts.append("")
 
     for t in types:
-        if "." in t:
-            error("Type name {!r} contains a dot character, skipping this class", t)
-            continue
+        assert "." not in t, "type name {!r} contains a dot character"
         parts.append(f"declare type {t} = {{ readonly [opaqueTypeTag]: '{t}' }};")
 
     return "\n".join(parts)
