@@ -184,7 +184,8 @@ def format(functions: Iterable[AnnotatedFunctionCall]):
     # (i.e. fucking reaper.array)
     for f in functions:
         if f.function_call.is_class_method:
-            unknown_types.remove(f.function_call.namespace)
+            if f.function_call.namespace in unknown_types:
+                unknown_types.remove(f.function_call.namespace)
 
     result.append(_declare_types(sorted(unknown_types)))
 
