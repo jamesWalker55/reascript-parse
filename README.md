@@ -65,19 +65,9 @@ reaper = {
     -- ...
 ````
 
-The documentation is usually poorly formatted, so some functions may fail to parse. These functions are logged to the console then skipped:
-
-```plain
-[WARN] Skipping malformed Lua function in section 'lua_gfx.arc' - failed to find params: 'gfx.arc(x,y,r,ang1,ang2[,antialias])'
-[WARN] Skipping malformed Lua function in section 'lua_gfx.blit' - failed to find params: 'gfx.blit(source[, scale, rotation, srcx, srcy, srcw, srch, destx, desty, destw, desth, rotxoffs, rotyoffs])'
-[WARN] Skipping malformed Lua function in section 'lua_gfx.blitext' - malformed function parameter: 'gfx.blitext(source,coordinatelist,rotation)'
-[WARN] Skipping malformed Lua function in section 'lua_gfx.blurto' - malformed function parameter: 'gfx.blurto(x,y)'
-[WARN] Skipping malformed Lua function in section 'lua_gfx.circle' - failed to find params: 'gfx.circle(x,y,r[,fill,antialias])'
-```
-
-To parse the failed functions, you should manually fix the source HTML before parsing it.
-
 ## Generating TypeScript Definitions
+
+This project also supports TypeScript output by using types from the [TypeScriptToLua](https://github.com/TypeScriptToLua/TypeScriptToLua) project.
 
 The action 'to-ts' generates a TypeScript declaration file containing all functions in the documentation:
 
@@ -85,3 +75,57 @@ The action 'to-ts' generates a TypeScript declaration file containing all functi
 # example usage:
 reascript-parse to-ts reascripthelp.html reaper.d.ts
 ```
+
+The generated file contains definitions like this:
+
+```typescript
+declare namespace reaper {
+  /**
+   * ```
+   * MediaItem _ = reaper.AddMediaItemToTrack(MediaTrack tr)
+   * ```
+   * creates a new media item.
+   */
+  function AddMediaItemToTrack(tr: MediaTrack): MediaItem;
+
+  /**
+   * ```
+   * boolean _ = reaper.AddTempoTimeSigMarker(ReaProject proj, number timepos, number bpm, integer timesig_num, integer timesig_denom, boolean lineartempochange)
+   * ```
+   * Deprecated. Use SetTempoTimeSigMarker with ptidx=-1.
+   * @deprecated
+   */
+  function AddTempoTimeSigMarker(proj: ReaProject, timepos: number, bpm: number, timesig_num: number, timesig_denom: number, lineartempochange: boolean): boolean;
+
+  /**
+   * ```
+   * reaper.adjustZoom(number amt, integer forceset, boolean doupd, integer centermode)
+   * ```
+   * forceset=0,doupd=true,centermode=-1 for default
+   */
+  function adjustZoom(amt: number, forceset: number, doupd: boolean, centermode: number): void;
+
+  // ...
+```
+
+## Parsing failure
+
+The documentation is usually poorly formatted, so there are many hiccups when parsing the documentation. For example:
+
+```log
+[WARN] Optional parameter followed by required parameter in 'ImGui_InputTextWithHint', forcing all parameters to be required: 'boolean  retval,  string  buf = reaper.ImGui_InputTextWithHint( ImGui_Context  ctx,  string  label,  string  hint,  string  buf,  optional integer  flagsIn,  ImGui_Function  callbackIn)'
+[INFO] Skipping section with no Lua function definition 'eel_acos'
+[WARN] Failed to parse parameters with default parser due to 'malformed function parameter', trying unstable bruteforce parser: 'gfx.arc(x,y,r,ang1,ang2[,antialias])'
+[WARN] Skipping malformed Lua function in section 'lua_gfx.deltablit' - failed to find params: 'gfx.deltablit(srcimg,srcs,srct,srcw,srch,destx,desty,destw,desth,dsdx,dtdx,dsdy,dtdy,dsdxdy,dtdxdy[,usecliprect=1])'
+[INFO] Lua declaration file saved to: temp/reaper_appdata.lua
+```
+
+In particular, some functions with especially terrible formatting (only 3 functions so far!) will be skipped with the following log message:
+
+```log
+[WARN] Skipping malformed Lua function in section 'lua_gfx_variables' - failed to find params: 'gfx VARIABLES'
+[WARN] Skipping malformed Lua function in section 'lua_gfx.deltablit' - failed to find params: 'gfx.deltablit(srcimg,srcs,srct,srcw,srch,destx,desty,destw,desth,dsdx,dtdx,dsdy,dtdy,dsdxdy,dtdxdy[,usecliprect=1])'
+[WARN] Skipping malformed Lua function in section 'lua_new_array' - failed to find params: 'reaper.new_array([table|array][size])'
+```
+
+To parse the failed functions, you should manually fix the source HTML before parsing it.
