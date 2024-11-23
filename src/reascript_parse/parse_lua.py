@@ -222,7 +222,7 @@ class FunctionCall(NamedTuple):
 
         namespace, functionname = _
         if namespace.startswith("{") and namespace.endswith("}"):
-            namespace = namespace[1:-1]
+            namespace = sanitise_identifier_name(namespace[1:-1])
             is_class_method = True
         else:
             is_class_method = False

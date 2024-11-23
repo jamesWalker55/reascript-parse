@@ -140,6 +140,10 @@ def _declare_class_methods(annotated_functions: Iterable[AnnotatedFunctionCall])
     parts: list[str] = []
     parts.append(f"declare class {namespace} {{")
 
+    # add opaqueTypeTag to class
+    parts.append(f"  readonly [opaqueTypeTag]: '{namespace}'")
+    parts.append(f"")
+
     for afc in annotated_functions:
         text = afc.format_method()
         text = textwrap.indent(text, "  ")
@@ -176,6 +180,13 @@ def format(functions: Iterable[AnnotatedFunctionCall]):
         for rv in fc.function_call.retvals:
             unknown_types.add(rv.type)
     unknown_types = unknown_types - frozenset(TYPEMAP.keys())
+
+    # some types may have class methods, so they will be declared in their own class
+    # remove them from the header declaration section to avoid duplicate declarations
+    # (i.e. fucking reaper.array)
+    for f in functions:
+        if f.function_call.is_class_method:
+            unknown_types.remove(f.function_call.namespace)
 
     result.append(_declare_types(sorted(unknown_types)))
 
