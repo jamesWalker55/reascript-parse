@@ -2,6 +2,8 @@ import re
 import string
 from typing import NamedTuple, Optional
 
+from .utils import warn
+
 KNOWN_TYPES = frozenset(
     [
         "boolean",
@@ -226,6 +228,20 @@ class FunctionCall(NamedTuple):
             is_class_method = True
         else:
             is_class_method = False
+
+        # validate params: optional params can't be followed by required params
+        last_param_was_optional = False
+        found_optional_violation = False
+        for p in params:
+            if last_param_was_optional and not p.optional:
+                warn(
+                    f"Optional parameter followed by required parameter in {functionname!r}, forcing all parameters to be required"
+                )
+                found_optional_violation = True
+                break
+            last_param_was_optional = p.optional
+        if found_optional_violation:
+            params = [FuncParam(p.type, p.name, False) for p in params]
 
         return cls(
             functionname,
