@@ -86,7 +86,7 @@ class AnnotatedFunctionCall(NamedTuple):
         params = ", ".join(
             ["..." if p.varargs else p.name for p in self.function_call.params]
         )
-        declaration = f"function {variable}:{self.function_call.name}({params}) end"
+        declaration = f"function {variable}.{self.function_call.name}({params}) end"
 
         return f"{docstring}\n{declaration}"
 
