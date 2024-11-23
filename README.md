@@ -12,9 +12,14 @@ It is recommended to use `rye` to install this script.
 rye sync
 ```
 
+Currently supported language outputs are:
+
+- Lua
+- TypeScript (through [TypeScriptToLua](https://github.com/TypeScriptToLua/TypeScriptToLua))
+
 ## Generating Lua Definitions
 
-![REAPER intellisense for Lua in VSCode](docs/intellisense.png)
+![REAPER intellisense for Lua in VSCode](docs/intellisense-lua.png)
 
 The action 'to-lua' generates a Lua declaration file containing all functions in the documentation:
 
@@ -66,6 +71,8 @@ reaper = {
 ````
 
 ## Generating TypeScript Definitions
+
+![REAPER intellisense for TypeScript in VSCode](docs/intellisense-ts.png)
 
 This project also supports TypeScript output by using types from the [TypeScriptToLua](https://github.com/TypeScriptToLua/TypeScriptToLua) project.
 
