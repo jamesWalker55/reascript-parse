@@ -44,7 +44,7 @@ class AnnotatedFunctionCall(NamedTuple):
         return docstring
 
     def _format_param(self, param: FuncParam) -> str:
-        return f"{'...' if param.varargs else ''}{param.name}{'?' if param.optional and not param.varargs else ''}: {self._lua_type_to_ts_type(param.type)}"
+        return f"{'...' if param.varargs else ''}{param.name}{'?' if param.optional and not param.varargs else ''}: {self._lua_type_to_ts_type(param.type)}{'[]' if param.varargs else ''}"
 
     def _lua_type_to_ts_type(self, name: str) -> str:
         if name in TYPEMAP:
