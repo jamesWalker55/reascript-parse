@@ -3,7 +3,7 @@ from argparse import ArgumentParser
 from reascript_parse import to_ts
 from reascript_parse.utils import error, info, warn
 
-from . import parse_doc_alt, parse_lua, to_emmy
+from . import parse_doc, parse_lua, to_emmy
 
 
 def parse_args():
@@ -45,7 +45,7 @@ def _main() -> int:
 
     if args.action == "to-lua":
         with open(args.input, "r", encoding="utf8") as f:
-            sections = parse_doc_alt.parse(f)
+            sections = parse_doc.parse(f)
 
         functioncalls: list[to_emmy.AnnotatedFunctionCall] = []
         for section in sections:
@@ -76,7 +76,7 @@ def _main() -> int:
 
     elif args.action == "to-ts":
         with open(args.input, "r", encoding="utf8") as f:
-            sections = parse_doc_alt.parse(f)
+            sections = parse_doc.parse(f)
 
         ts_fc: list[to_ts.AnnotatedFunctionCall] = []
         for section in sections:
