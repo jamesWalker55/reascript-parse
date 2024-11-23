@@ -1,4 +1,5 @@
 import re
+import string
 from typing import NamedTuple, Optional
 
 KNOWN_TYPES = frozenset(
@@ -21,6 +22,9 @@ def sanitise_identifier_name(name: str) -> str:
     name = re.sub("[^0-9a-zA-Z_]+", "_", name)
     # disallow keywords as names
     if name in LUA_KEYWORDS:
+        name = f"_{name}"
+    # disallow leading numbers
+    if name[0] in string.digits:
         name = f"_{name}"
     return name
 
