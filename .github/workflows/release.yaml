@@ -1,0 +1,64 @@
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: Python application
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install the latest version of rye
+        uses: eifinger/setup-rye@v4
+        with:
+          enable-cache: true
+
+      - name: Sync dependencies
+        run: rye sync
+
+      - name: Download official ReaScript documentation
+        run: wget -O temp/reascripthelp.html https://www.reaper.fm/sdk/reascript/reascripthelp.html
+
+      - name: Generate TypeScript outputs
+        run: rye run reascript-parse to-ts temp/reascripthelp.html temp/reaper.d.ts &> "temp/reaper.d.ts.log"
+
+      - name: Generate Lua outputs
+        run: rye run reascript-parse to-lua temp/reascripthelp.html temp/reaper.lua &> "temp/reaper.lua.log"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          path: temp/
+          if-no-files-found: error
+
+      - name: Gather info for release
+        id: release-info
+        run: |
+          echo "TODAY=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Auto generated ${{ steps.release-info.outputs.TODAY }}
+          body: |
+            Auto-generated definitions from the official documentation https://www.reaper.fm/sdk/reascript/reascripthelp.html on ${{ steps.release-info.outputs.TODAY }}.
+
+          files: |
+            temp/reascripthelp.html
+            temp/reaper.d.ts
+            temp/reaper.d.ts.log
+            temp/reaper.lua
+            temp/reaper.lua.log
+
+          tag_name: actions-release
+          make_latest: true
